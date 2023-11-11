@@ -29,7 +29,10 @@ To DO:
 - ---------------------------------------------- -
 
 - Rendere GUI guardabile e intuitiva
+    WIP
 
 - dalla GUI possibilità di inserire certificato allo stub (chiavi RSA)
-
+    vedi come comprare certificato digicert o file .bat per bypassare
+    il certificato self-signed non worka 
+    
 - dalla GUI possibilità di cambiare l'icona dello stub
