@@ -4,16 +4,29 @@ import tkinter as tk
 from tkinter import filedialog
 from tkinter import messagebox
 
+
 def allega_file():
     file_path = filedialog.askopenfilename(title="Seleziona un file")
     if file_path:
         # Qui puoi gestire il percorso del file come desideri
-        set_text(file_path)
+        set_text(file_path, path_entry)
         print(f"File allegato: {file_path}")
 
-def set_text(text):
-    path_entry.delete(0,tk.END)
-    path_entry.insert(0,text)
+def center_window(width=300, height=200):
+    # get screen width and height
+    screen_width = window.winfo_screenwidth()
+    screen_height = window.winfo_screenheight()
+
+    # calculate position x and y coordinates
+    x = (screen_width/2) - (width/2)
+    y = (screen_height/2) - (height/2)
+    window.geometry('%dx%d+%d+%d' % (width, height, x, y))
+
+
+
+def set_text(text, entry):
+    entry.delete(0,tk.END)
+    entry.insert(0,text)
     return
 
 def mostra_finestra_di_dialogo(code):
@@ -32,14 +45,17 @@ def mostra_finestra_di_dialogo(code):
 # Creazione della finestra principale
 window = tk.Tk()
 window.title("Crypter")
-window.geometry("600x600")
+center_window(500, 400)
 
-path_entry  = tk.Entry(window, width=30)
-path_entry.grid(row=1,column=1, padx= 30,pady=30)
 
+path_entry  = tk.Entry(window, width=50)
+path_entry.place(relx=.1, rely=.11)
+
+label1= tk.Label(window, text="Inserisci il tuo malware")
+label1.place(relx=.1,rely=.05)
 # Creazione del bottone per allegare il file
-allega_button = tk.Button(window, text="Allega File", command=allega_file)
-allega_button.grid(row=1,column=2)
+allega_button = tk.Button(window, text="Allega File", command=allega_file, relief="ridge", borderwidth=2)
+allega_button.place(relx=.79, rely=.105)
 
 def checkExtension(f) :
     n= len(f)
@@ -75,7 +91,6 @@ def verifica_percorso(percorso):
 
     
 
-#caio
 # Comando da eseguire
 def esegui():
     file = path_entry.get()
@@ -97,18 +112,18 @@ def esegui():
     # Esegui il comando
     if comando !=None:
         print(os.popen(comando).read())
-        #os.system(comando)
-        #risultato = subprocess.run(comando, shell=True, capture_output=True, text=True)
-        # Stampa l'output del comando
-        #print("Output del comando:", risultato.stdout)
-        print("finito")
-        # Stampa il codice di uscita
-        #print("Codice di uscita:", risultato.returncode)
+        #output comando
+        set_text("Malware Inserito correttamente nello stub",labelOUT)
 
+#bottone avvia
 exec_button = tk.Button(window, text="Avvia", command=esegui)
-exec_button.grid(row=5,column=5)
+exec_button.place(relx=0.5, rely=0.25, anchor="center", width=100, height=30)
 
 
 
+
+#cambio icona allo stub
+labelOUT = tk.Label(window, text="")
+labelOUT.place(relx=.1, rely=.6)
 # Esecuzione del loop principale della finestra
 window.mainloop()
