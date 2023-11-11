@@ -18,8 +18,6 @@ P.S La chiave l'ho generata casualmente, sono 32 byte completamente casuali
 
 To DO:
 
-- Rendere GUI guardabile e intuitiva
-
 - testare e semmai applicare crittografia piu' complessa
 
 - Dare la possibilita' di fare piu' metodi di RunPE
@@ -28,4 +26,10 @@ To DO:
 
 - eliminare possibili metadati dallo stub(?)
 
+- ---------------------------------------------- -
+
+- Rendere GUI guardabile e intuitiva
+
 - dalla GUI possibilità di inserire certificato allo stub (chiavi RSA)
+
+- dalla GUI possibilità di cambiare l'icona dello stub
