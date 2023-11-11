@@ -25,3 +25,7 @@ To DO:
 - Dare la possibilita' di fare piu' metodi di RunPE
 
 - provare  a fare RunTime PE (Ad esempio potremmo criptare ogni istruzione che non e' piu' necessaria
+
+- eliminare possibili metadati dallo stub(?)
+
+- dalla GUI possibilità di inserire certificato allo stub (chiavi RSA)
