@@ -75,7 +75,7 @@ def verifica_percorso(percorso):
 
     
 
-
+#caio
 # Comando da eseguire
 def esegui():
     file = path_entry.get()
