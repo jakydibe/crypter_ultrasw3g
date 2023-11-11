@@ -92,17 +92,18 @@ def esegui():
         #estensione non valida
         mostra_finestra_di_dialogo(2)
     else:
-        comando = "echo "+ file
+        comando = "mio_crypter.exe " + file
+        print(comando)
     # Esegui il comando
-
-
     if comando !=None:
-        risultato = subprocess.run(comando, shell=True, capture_output=True, text=True)
+        print(os.popen(comando).read())
+        #os.system(comando)
+        #risultato = subprocess.run(comando, shell=True, capture_output=True, text=True)
         # Stampa l'output del comando
-        print("Output del comando:", risultato.stdout)
-
+        #print("Output del comando:", risultato.stdout)
+        print("finito")
         # Stampa il codice di uscita
-        print("Codice di uscita:", risultato.returncode)
+        #print("Codice di uscita:", risultato.returncode)
 
 exec_button = tk.Button(window, text="Avvia", command=esegui)
 exec_button.grid(row=5,column=5)
