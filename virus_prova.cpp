@@ -16,7 +16,7 @@ typedef BOOL (WINAPI * pVirtualProtect)(LPVOID lpAddress,SIZE_T dwSize,DWORD  fl
 
 typedef VOID (WINAPI * pRtlMoveMemory)(VOID UNALIGNED *Destination,const VOID UNALIGNED *Source,SIZE_T Length);
 
-
+// MODIFICARE PAYLOAD_METERPRETER
 
 
 //path alla chiave:
