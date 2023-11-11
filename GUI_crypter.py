@@ -113,7 +113,8 @@ def esegui():
     if comando !=None:
         print(os.popen(comando).read())
         #output comando
-        set_text("Malware Inserito correttamente nello stub",labelOUT)
+        labelOUT = tk.Label(window, text="Malware Inserito correttamente nello stub")
+        labelOUT.place(relx=.1, rely=.6)
 
 #bottone avvia
 exec_button = tk.Button(window, text="Avvia", command=esegui)
@@ -123,7 +124,7 @@ exec_button.place(relx=0.5, rely=0.25, anchor="center", width=100, height=30)
 
 
 #cambio icona allo stub
-labelOUT = tk.Label(window, text="")
-labelOUT.place(relx=.1, rely=.6)
+
+
 # Esecuzione del loop principale della finestra
 window.mainloop()
