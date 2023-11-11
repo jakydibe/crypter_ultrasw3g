@@ -18,12 +18,10 @@ P.S La chiave l'ho generata casualmente, sono 32 byte completamente casuali
 
 To DO:
 
-1)SCRIVERE LA GUI
+- Rendere GUI guardabile e intuitiva
 
-2)testare e semmai applicare crittografia piu' complessa
+- testare e semmai applicare crittografia piu' complessa
 
-3)implementare sempre una chiave diversa (magari da linea di comando, non so)
+- Dare la possibilita' di fare piu' metodi di RunPE
 
-4)Dare la possibilita' di fare piu' metodi di RunPE
-
-5)provare  a fare RunTime PE (Ad esempio potremmo criptare ogni istruzione che non e' piu' necessaria
+- provare  a fare RunTime PE (Ad esempio potremmo criptare ogni istruzione che non e' piu' necessaria
