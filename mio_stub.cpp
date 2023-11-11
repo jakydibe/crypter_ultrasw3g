@@ -160,7 +160,7 @@ int main(){
             );*/
             printf("DOPO Aver creato il processo");
             Sleep(3000);
-            //ormai il thread si puo' accesere da PI.hThread perche\ 
+            //ormai il thread si puo' accesere da PI.hThread perche 
             if (GetThreadContext(PI.hThread, LPCONTEXT(CTX))) { // prendo i registri del processo che vogliamo attaccare 
                 //VirtualAllocEx alloca memoria in un processo esterno dal corrente
                 pImageBase = VirtualAllocEx( // alloco memoria nel processo che vogliamo attaccare
