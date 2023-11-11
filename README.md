@@ -9,12 +9,15 @@ UTLIZZO (OVVIAMENTE DA WINDOWS, E DEVI SCARICARTI IL TERMINALE X64 DI VISUAL STU
 
 4)mio_crypter.exe malware.exe  //crypter va a scrivere delle sezioni di mio_stub.exe mettendoci l' immagine criptata del malware nella sezione risorse
 
-5) esegui mio_stub.exe
+5)esegui mio_stub.exe
 
 
 P.S La chiave l'ho generata casualmente, sono 32 byte completamente casuali
 
+
+
 To DO:
+
 1)SCRIVERE LA GUI
 
 2)testare e semmai applicare crittografia piu' complessa
