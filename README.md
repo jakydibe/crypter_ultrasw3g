@@ -26,6 +26,10 @@ To DO:
 
 - eliminare possibili metadati dallo stub(?)
 
+- trovare modo di iniettare se stesso in altri processi
+
+- renderlo persistente
+
 - ---------------------------------------------- -
 
 - Rendere GUI guardabile e intuitiva
