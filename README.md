@@ -27,9 +27,10 @@ To DO:
 - eliminare possibili metadati dallo stub(?)
 
 - trovare modo di iniettare se stesso in altri processi
-
+    1 trovare modo di forkare altri processi (?)
+    
 - renderlo persistente
-
+    forse fatto 
 - ---------------------------------------------- -
 
 - Rendere GUI guardabile e intuitiva
@@ -40,3 +41,12 @@ To DO:
     il certificato self-signed non worka 
     
 - dalla GUI possibilità di cambiare l'icona dello stub
+- ------------------------------------------------------------- -
+
+- pers.cpp(enumeratore di .exe) gestire l'accesso non autorizzato ad alcune cartelle
+    capire se, e se si in quale cartella iniziare l'enumerazione
+ 
+
+
+
+
