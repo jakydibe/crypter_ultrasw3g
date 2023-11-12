@@ -12,6 +12,14 @@ def allega_file():
         set_text(file_path, path_entry)
         print(f"File allegato: {file_path}")
 
+
+def cambia_icona():
+    file_path = filedialog.askopenfilename(title="Select a file")
+    if file_path:
+        
+
+def 
+
 def center_window(width=300, height=200):
     # get screen width and height
     screen_width = window.winfo_screenwidth()
@@ -117,9 +125,11 @@ def esegui():
         labelOUT.place(relx=.1, rely=.6)
 
 #bottone avvia
-exec_button = tk.Button(window, text="Avvia", command=esegui)
+exec_button = tk.Button(window, text="Avvia", command=esegui, relief="ridge", borderwidth=2)
 exec_button.place(relx=0.5, rely=0.25, anchor="center", width=100, height=30)
 
+chanegeicon_button = tk.Button(window, text="cambia icona stub.exe", command=allega_file, relief="ridge", borderwidth=2)
+chanegeicon_button.place(relx=.1,rely=.25, anchor="w", width=130, height=30)
 
 
 
