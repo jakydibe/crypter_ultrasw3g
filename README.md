@@ -44,7 +44,8 @@ To DO:
 - ------------------------------------------------------------- -
 
 - pers.cpp(enumeratore di .exe) gestire l'accesso non autorizzato ad alcune cartelle
-    capire se, e se si in quale cartella iniziare l'enumerazione
+    capire se, e se si in quale cartella iniziare l'enumerazione-
+- enumerare gli exe che hanno come utente associato il current user 
  
 
 
