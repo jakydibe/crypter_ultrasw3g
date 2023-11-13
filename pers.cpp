@@ -10,9 +10,6 @@
 #include <psapi.h>
 #include <fstream>              
 #include <WinUser.h>
-               
-               
-               
 #include <iostream>
 #include <filesystem>
 #include <string>
@@ -27,6 +24,58 @@ bool check(std::filesystem::path dir){
             return FALSE;
     }
     return TRUE;
+}
+
+
+int FindTarget(const char *procname) { //zi compila bho
+    HANDLE hProcSnap;
+    PROCESSENTRY32 pe32;
+    int pid = 0;
+            
+    hProcSnap = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
+    if (INVALID_HANDLE_VALUE == hProcSnap) return 0;
+            
+    pe32.dwSize = sizeof(PROCESSENTRY32); 
+            
+    if (!Process32First(hProcSnap, &pe32)) {
+            CloseHandle(hProcSnap);
+            return 0;
+    }
+            
+    while (Process32Next(hProcSnap, &pe32)) {
+            if (lstrcmpiA(procname, (LPCSTR)pe32.szExeFile) == 0) {
+                    pid = pe32.th32ProcessID;
+                    break;
+            }
+    }
+            
+    CloseHandle(hProcSnap);
+            
+    return pid;
+}
+
+char* GetProcessOwnerByID(int processId)
+{
+  IntPtr processHandle = IntPtr.Zero;
+  IntPtr tokenHandle = IntPtr.Zero;
+  try
+  {
+    processHandle = OpenProcess(PROCESS_QUERY_INFORMATION, false, processId);
+    if (processHandle == IntPtr.Zero)
+      return "NO ACCESS";
+
+    OpenProcessToken(processHandle, TOKEN_QUERY, out tokenHandle);
+    using (WindowsIdentity wi = new WindowsIdentity(tokenHandle))
+    {
+      string user = wi.Name;
+      return user.Contains(@"\") ? user.Substring(user.IndexOf(@"\") + 1) : user;
+    }
+  }
+  finally
+  {
+    if (tokenHandle != IntPtr.Zero) CloseHandle(tokenHandle);
+    if (processHandle != IntPtr.Zero) CloseHandle(processHandle);
+  }
 }
 
 void iterate_folder(std::filesystem::path folder_path){
