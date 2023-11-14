@@ -30,7 +30,9 @@ To DO:
     1 trovare modo di forkare altri processi (?)
     
 - renderlo persistente
-    forse fatto 
+    forse fatto
+
+-implementare import address table spoof 
 - ---------------------------------------------- -
 
 - Rendere GUI guardabile e intuitiva
